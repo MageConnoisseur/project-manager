@@ -1,4 +1,4 @@
-# Render Blueprint — optional; you can also set these in the Render dashboard.
+# Render Blueprint — optional; mirror these settings in the dashboard if needed.
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
@@ -6,10 +6,9 @@ services:
     name: project-manager-api
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
-    # Use "python -m uvicorn" so Render finds uvicorn inside the installed env
-    # (the bare "uvicorn" command is often not on PATH after pip install).
-    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Use python3 explicitly — Render often does not provide a "python" command.
+    buildCommand: python3 -m pip install -r requirements.txt
+    startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
         value: "3.10.13"
