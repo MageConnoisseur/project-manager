@@ -12,12 +12,24 @@ import { useNotificationStore } from '../store/notificationStore';
 import { redirectToLogin } from './navigation';
 
 /**
- * Where API requests go.
- * - Local dev: defaults to http://127.0.0.1:8000 if unset
- * - Vercel: MUST set VITE_API_BASE_URL to your Render URL in project env vars
+ * Read the API URL from Vite env vars.
+ * We accept two names because Vercel/docs often use VITE_API_URL while our example used VITE_API_BASE_URL.
  */
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? 'http://127.0.0.1:8000';
+function resolveApiBaseUrl(): string {
+  const fromEnv =
+    import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL;
+
+  if (fromEnv && typeof fromEnv === 'string' && fromEnv.trim()) {
+    return fromEnv.replace(/\/$/, '');
+  }
+
+  return 'http://127.0.0.1:8000';
+}
+
+const configuredApiUrl =
+  import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL;
+
+const baseURL = resolveApiBaseUrl();
 
 const isProductionHost =
   typeof window !== 'undefined' &&
@@ -26,8 +38,9 @@ const isProductionHost =
 
 const isApiUrlMisconfigured =
   isProductionHost &&
-  (!import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_BASE_URL.includes('localhost'));
+  (!configuredApiUrl ||
+    String(configuredApiUrl).includes('localhost') ||
+    String(configuredApiUrl).includes('127.0.0.1'));
 
 export const apiClient = axios.create({
   baseURL,
@@ -44,8 +57,8 @@ export const apiClient = axios.create({
 export function getNetworkErrorHint(): string {
   if (isApiUrlMisconfigured) {
     return (
-      'API URL is not configured for production. In Vercel, set VITE_API_BASE_URL to your ' +
-      'Render URL (e.g. https://your-app.onrender.com), then redeploy the frontend.'
+      'API URL is not configured for production. In Vercel, set VITE_API_BASE_URL or VITE_API_URL ' +
+      'to your Render URL (e.g. https://your-app.onrender.com), then redeploy the frontend.'
     );
   }
 
