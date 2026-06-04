@@ -1,0 +1,462 @@
+/**
+ * Layout and shell styles for Phase 3.
+ * Kept in a separate file so component files stay focused on structure.
+ */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app-layout__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-layout__content {
+  flex: 1;
+  padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
+}
+
+/* --- Sidebar --- */
+
+.app-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 0;
+}
+
+.app-sidebar__brand {
+  padding: 0 1.25rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
+.app-sidebar__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.app-sidebar__subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.app-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0.75rem;
+}
+
+.app-sidebar__section {
+  margin-bottom: 1.5rem;
+}
+
+.app-sidebar__section-title {
+  margin: 0 0 0.5rem;
+  padding: 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.app-sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.app-sidebar__list--nested {
+  padding-left: 0.5rem;
+}
+
+.app-sidebar__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 2px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.app-sidebar__item:hover {
+  background: var(--color-hover);
+}
+
+.app-sidebar__item--active {
+  background: var(--color-active);
+  font-weight: 500;
+}
+
+.app-sidebar__hint {
+  margin: 0;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* --- Header --- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.app-header__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.app-header__status {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.app-header__email {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.app-header__logout {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.app-header__logout:hover {
+  background: var(--color-hover);
+}
+
+/* --- Main placeholder --- */
+
+.welcome-panel {
+  max-width: 36rem;
+}
+
+.welcome-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.welcome-panel p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+/* --- Global notifications --- */
+
+.notification-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.notification--error {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.notification__message {
+  margin: 0;
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.notification__dismiss {
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+/* --- Auth pages --- */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--color-bg);
+}
+
+.auth-form {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.auth-form h2 {
+  margin: 0 0 0.5rem;
+}
+
+.auth-form__hint {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.auth-form__field input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.auth-form .btn--primary {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.auth-form__footer {
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* --- Task forms & priority list --- */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.task-form,
+.priority-list {
+  max-width: 40rem;
+}
+
+.task-form h3,
+.priority-list h3 {
+  margin: 0 0 0.5rem;
+}
+
+.task-form__context,
+.priority-list__hint {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.task-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.task-form__field input,
+.task-form__field textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+/* --- Sidebar create forms --- */
+
+.sidebar-form {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-hover);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.sidebar-form__context {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.sidebar-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-form__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.sidebar-form__field input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: inherit;
+}
+
+.sidebar-form .btn--primary {
+  margin-top: 0.25rem;
+}
+
+.sidebar-form .text-red-500 {
+  margin-bottom: 0.35rem;
+}
+
+.priority-list__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.priority-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.priority-list__item--dragging {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.priority-list__handle {
+  cursor: grab;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.priority-list__label {
+  flex: 1;
+}
+
+/* --- Priority list project filter (1B) --- */
+
+.priority-filter {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--color-hover);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.priority-filter__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.priority-filter__select {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  background: var(--color-surface);
+  color: inherit;
+}
+
+.priority-filter__note {
+  margin: 0.75rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* --- Responsive: stack sidebar on narrow screens --- */
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .app-sidebar {
+    width: 100%;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .app-header {
+    padding: 1rem 1.25rem;
+  }
+
+  .app-layout__content {
+    padding: 1.25rem;
+  }
+}

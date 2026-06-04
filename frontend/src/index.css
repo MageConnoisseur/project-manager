@@ -1,0 +1,105 @@
+/**
+ * Global styles and CSS variables for the task manager UI.
+ */
+
+:root {
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-text: #1a1d26;
+  --color-text-muted: #5c6370;
+  --color-border: #e2e5eb;
+  --color-hover: #eef0f4;
+  --color-active: #e0e7ff;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #12141a;
+    --color-surface: #1a1d26;
+    --color-sidebar: #161922;
+    --color-text: #e8eaed;
+    --color-text-muted: #9aa3b2;
+    --color-border: #2e3340;
+    --color-hover: #252a36;
+    --color-active: #2d3561;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Shared buttons — primary actions use indigo so they read as clickable */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.15rem;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--primary {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.35);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #4338ca;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.45);
+}
+
+.btn--primary:disabled {
+  background: #e0e7ff;
+  color: #6b7280;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Form validation errors (requested class name) */
+.text-red-500 {
+  color: #dc2626;
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-text);
+}
