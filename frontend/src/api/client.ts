@@ -11,15 +11,50 @@ import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { redirectToLogin } from './navigation';
 
-/** Local FastAPI server — override with VITE_API_BASE_URL in production */
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+/**
+ * Where API requests go.
+ * - Local dev: defaults to http://127.0.0.1:8000 if unset
+ * - Vercel: MUST set VITE_API_BASE_URL to your Render URL in project env vars
+ */
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? 'http://127.0.0.1:8000';
+
+const isProductionHost =
+  typeof window !== 'undefined' &&
+  !window.location.hostname.includes('localhost') &&
+  !window.location.hostname.includes('127.0.0.1');
+
+const isApiUrlMisconfigured =
+  isProductionHost &&
+  (!import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_BASE_URL.includes('localhost'));
 
 export const apiClient = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
+  // Render free tier can take ~30s to wake; avoid instant "network error" on cold start.
+  timeout: 60_000,
 });
+
+/**
+ * Build a helpful message when the browser never got an HTTP response (CORS, wrong URL, offline).
+ */
+export function getNetworkErrorHint(): string {
+  if (isApiUrlMisconfigured) {
+    return (
+      'API URL is not configured for production. In Vercel, set VITE_API_BASE_URL to your ' +
+      'Render URL (e.g. https://your-app.onrender.com), then redeploy the frontend.'
+    );
+  }
+
+  return (
+    `Cannot reach the API at ${baseURL}. ` +
+    'Check that Render is running (/health), DATABASE_URL is set, and CORS_ORIGINS on Render ' +
+    'includes this site (or CORS_ALLOW_VERCEL=true).'
+  );
+}
 
 /**
  * Login and signup may return 401/400 — those must show on the form, not log the user out.
@@ -55,12 +90,21 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // --- Network: no response object (offline, DNS, connection refused) ---
+    // --- Network: no response (wrong API URL, CORS blocked, server down, timeout) ---
     if (!error.response) {
-      console.error('[API] Network error:', error.message, { url: requestUrl });
-      useNotificationStore.getState().showError(
-        'Network error. Check your connection and try again.',
-      );
+      const hint = getNetworkErrorHint();
+      console.error('[API] Network error:', error.message, { baseURL, url: requestUrl });
+      useNotificationStore.getState().showError(hint);
+      return Promise.reject(error);
+    }
+
+    // --- Database / server unavailable ---
+    if (status === 503) {
+      const detail =
+        typeof error.response.data?.detail === 'string'
+          ? error.response.data.detail
+          : 'Service temporarily unavailable.';
+      useNotificationStore.getState().showError(detail);
       return Promise.reject(error);
     }
 

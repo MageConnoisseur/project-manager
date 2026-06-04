@@ -59,3 +59,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 # Comma-separated list of allowed origins, e.g. http://localhost:5173,https://myapp.vercel.app
 _cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
 CORS_ORIGINS = [origin.strip() for origin in _cors_raw.split(",") if origin.strip()]
+
+# When true, also allow any https://*.vercel.app origin (preview + production deploys).
+CORS_ALLOW_VERCEL = os.getenv("CORS_ALLOW_VERCEL", "true").lower() in ("1", "true", "yes")

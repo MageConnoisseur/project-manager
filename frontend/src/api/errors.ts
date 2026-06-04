@@ -7,6 +7,8 @@
 
 import axios from 'axios';
 
+import { getNetworkErrorHint } from './client';
+
 /** Shape FastAPI often returns: { detail: "message" } or { detail: [{ msg: "..." }] } */
 function detailToString(detail: unknown): string | null {
   if (typeof detail === 'string') {
@@ -36,7 +38,7 @@ function detailToString(detail: unknown): string | null {
 export function getAxiosErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return 'Network error. Check your connection and try again.';
+      return getNetworkErrorHint();
     }
 
     const fromDetail = detailToString(error.response.data?.detail);

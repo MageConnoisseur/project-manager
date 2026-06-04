@@ -4,7 +4,7 @@ Authentication routes: signup, login (JWT), and current user profile.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlmodel import Session, select
 
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -23,7 +23,14 @@ def signup(body: UserSignupRequest, db: Session = Depends(get_db)) -> User:
 
     The password is hashed before we save anything. We never store plain passwords.
     """
-    existing = db.exec(select(User).where(User.email == body.email)).first()
+    try:
+        existing = db.exec(select(User).where(User.email == body.email)).first()
+    except OperationalError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is temporarily unavailable. Please try again shortly.",
+        )
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -63,7 +70,14 @@ def login(
     OAuth2 expects form fields named `username` and `password`.
     We use `username` for the user's email address (FastAPI convention).
     """
-    user = db.exec(select(User).where(User.email == form_data.username)).first()
+    try:
+        user = db.exec(select(User).where(User.email == form_data.username)).first()
+    except OperationalError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is temporarily unavailable. Please try again shortly.",
+        )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
