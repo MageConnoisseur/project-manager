@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Render start script — use this as the Start Command: bash start.sh
+# Render start script — set Start Command to: bash start.sh
 #
-# Why this file exists:
-# - Render's shell often has "python3" but NOT "python" (your logs showed both missing
-#   when only "uvicorn" or "python" were used).
-# - Running "python3 -m uvicorn" uses the same interpreter that pip used during build.
+# Must use the same .venv that build.sh created (not system /usr/bin/python3).
 
 set -euo pipefail
 
-# Prefer the project virtualenv if Render created one during build.
-if [ -d ".venv/bin" ]; then
-  exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT:?PORT not set}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ ! -x ".venv/bin/python" ]; then
+  echo "ERROR: .venv/bin/python not found. Build Command must run: bash build.sh"
+  exit 1
 fi
 
-# Fallback: system Python 3 on Render.
-exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT:?PORT not set}"
+echo "==> Starting API with .venv Python on port ${PORT:?PORT not set}..."
+exec .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT"

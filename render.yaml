@@ -1,13 +1,10 @@
-# Render Blueprint — optional; mirror these settings in the dashboard if needed.
-# Docs: https://render.com/docs/blueprint-spec
-
+# Render Blueprint — optional; mirror these in the dashboard.
 services:
   - type: web
     name: project-manager-api
     runtime: python
     plan: free
-    # Use python3 explicitly — Render often does not provide a "python" command.
-    buildCommand: python3 -m pip install -r requirements.txt
+    buildCommand: bash build.sh
     startCommand: bash start.sh
     envVars:
       - key: PYTHON_VERSION
