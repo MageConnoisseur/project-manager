@@ -5,7 +5,7 @@ The reorder route is defined BEFORE /{task_id} so FastAPI does not treat
 "reorder" as a task id.
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -21,6 +21,7 @@ from app.schemas.task import (
     TaskResponse,
     TaskUpdateRequest,
 )
+from app.utils.recurrence import apply_recurring_completion, default_due_date_for_recurring_task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -29,6 +30,7 @@ def _validate_recurrence_fields(
     is_recurring: bool,
     recurrence_interval: Optional[int],
     recurrence_unit: Optional[RecurrenceUnit],
+    recurrence_end_date: Optional[date] = None,
 ) -> None:
     """
     Recurring tasks must include interval + unit; non-recurring tasks must not.
@@ -42,34 +44,22 @@ def _validate_recurrence_fields(
                 detail="Recurring tasks require recurrence_interval and recurrence_unit",
             )
     else:
-        if recurrence_interval is not None or recurrence_unit is not None:
+        if (
+            recurrence_interval is not None
+            or recurrence_unit is not None
+            or recurrence_end_date is not None
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Non-recurring tasks cannot set recurrence fields",
             )
 
 
-def _apply_recurring_completion_reset(task: Task) -> None:
-    """
-    When a recurring task is marked complete, advance it to the next cycle.
-
-    Keeps is_completed True (the user just finished this period) and pushes
-    due_date forward based on interval + unit. Does not archive the task.
-    """
-    if not task.is_recurring or task.recurrence_interval is None or task.recurrence_unit is None:
-        return
-
-    if task.due_date is None:
-        return
-
-    interval = task.recurrence_interval
-    if task.recurrence_unit == RecurrenceUnit.DAY:
-        task.due_date = task.due_date + timedelta(days=interval)
-    elif task.recurrence_unit == RecurrenceUnit.WEEK:
-        task.due_date = task.due_date + timedelta(weeks=interval)
-    elif task.recurrence_unit == RecurrenceUnit.MONTH:
-        # Approximate months as 30 days for simplicity in Phase 2.
-        task.due_date = task.due_date + timedelta(days=30 * interval)
+def _resolve_due_date_for_create(body: TaskCreateRequest) -> Optional[date]:
+    """Recurring tasks without an explicit due date start on today's schedule."""
+    if body.is_recurring and body.due_date is None:
+        return default_due_date_for_recurring_task(None)
+    return body.due_date
 
 
 @router.put("/reorder", response_model=list[TaskResponse])
@@ -181,6 +171,7 @@ def create_task(
         body.is_recurring,
         body.recurrence_interval,
         body.recurrence_unit,
+        body.recurrence_end_date,
     )
 
     task = Task(
@@ -188,12 +179,13 @@ def create_task(
         workspace_id=project.workspace_id,
         title=body.title,
         description=body.description,
-        due_date=body.due_date,
+        due_date=_resolve_due_date_for_create(body),
         is_completed=body.is_completed,
         priority_index=body.priority_index,
         is_recurring=body.is_recurring,
         recurrence_interval=body.recurrence_interval if body.is_recurring else None,
         recurrence_unit=body.recurrence_unit if body.is_recurring else None,
+        recurrence_end_date=body.recurrence_end_date if body.is_recurring else None,
     )
     db.add(task)
     db.commit()
@@ -241,26 +233,36 @@ def update_task(
         body.recurrence_interval if body.recurrence_interval is not None else task.recurrence_interval
     )
     new_unit = body.recurrence_unit if body.recurrence_unit is not None else task.recurrence_unit
+    new_end_date = (
+        body.recurrence_end_date
+        if "recurrence_end_date" in body.model_fields_set
+        else task.recurrence_end_date
+    )
 
     if body.is_recurring is not None:
         task.is_recurring = body.is_recurring
         if not body.is_recurring:
             task.recurrence_interval = None
             task.recurrence_unit = None
+            task.recurrence_end_date = None
             new_interval = None
             new_unit = None
+            new_end_date = None
 
     if body.recurrence_interval is not None:
         task.recurrence_interval = body.recurrence_interval
     if body.recurrence_unit is not None:
         task.recurrence_unit = body.recurrence_unit
+    if "recurrence_end_date" in body.model_fields_set:
+        task.recurrence_end_date = body.recurrence_end_date
 
-    _validate_recurrence_fields(new_is_recurring, new_interval, new_unit)
+    _validate_recurrence_fields(new_is_recurring, new_interval, new_unit, new_end_date)
 
     if body.is_completed is not None:
+        was_completed = task.is_completed
         task.is_completed = body.is_completed
-        if body.is_completed and task.is_recurring:
-            _apply_recurring_completion_reset(task)
+        if body.is_completed and not was_completed and task.is_recurring:
+            apply_recurring_completion(task)
 
     task.updated_at = datetime.utcnow()
     db.add(task)

@@ -44,6 +44,7 @@ export interface Task {
   is_recurring: boolean;
   recurrence_interval: number | null;
   recurrence_unit: RecurrenceUnit | null;
+  recurrence_end_date: string | null;
   created_at: string;
   updated_at: string;
 }

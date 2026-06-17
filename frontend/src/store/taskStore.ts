@@ -12,11 +12,19 @@ import { getAxiosErrorMessage } from '../api/errors';
 import {
   createList as createListApi,
   createProject as createProjectApi,
+  deleteList as deleteListApi,
+  deleteProject as deleteProjectApi,
   fetchLists,
   fetchProjects,
 } from '../api/lists';
-import { createTask as createTaskApi, fetchTasksByWorkspace, reorderTasks as reorderTasksApi } from '../api/tasks';
-import type { CreateTaskPayload } from '../api/tasks';
+import {
+  createTask as createTaskApi,
+  deleteTask as deleteTaskApi,
+  fetchTasksByWorkspace,
+  reorderTasks as reorderTasksApi,
+  updateTask as updateTaskApi,
+} from '../api/tasks';
+import type { CreateTaskPayload, UpdateTaskPayload } from '../api/tasks';
 import type { Project, Task, WorkspaceList } from '../types';
 import {
   loadPriorityListFilters,
@@ -56,6 +64,10 @@ interface TaskActions {
   createList: (name: string) => Promise<WorkspaceList | null>;
   createProject: (workspaceId: number, title: string, description?: string) => Promise<Project | null>;
   createTask: (payload: CreateTaskPayload) => Promise<Task | null>;
+  updateTask: (taskId: number, payload: UpdateTaskPayload) => Promise<Task | null>;
+  deleteList: (listId: number) => Promise<boolean>;
+  deleteProject: (projectId: number) => Promise<boolean>;
+  deleteTask: (taskId: number) => Promise<boolean>;
 
   /**
    * Optimistic reorder for drag-and-drop on the full workspace task list.
@@ -214,6 +226,108 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       return null;
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  updateTask: async (taskId, payload) => {
+    set({ error: null });
+    try {
+      const updated = await updateTaskApi(taskId, payload);
+      set((state) => ({
+        tasks: sortTasksByPriority(
+          state.tasks.map((task) => (task.id === taskId ? updated : task)),
+        ),
+      }));
+      return updated;
+    } catch (error) {
+      set({ error: getAxiosErrorMessage(error, 'Failed to update task.') });
+      return null;
+    }
+  },
+
+  deleteList: async (listId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await deleteListApi(listId);
+
+      set((state) => {
+        const remainingLists = state.lists.filter((list) => list.id !== listId);
+        const wasSelected = state.selectedListId === listId;
+        const nextSelectedListId = wasSelected
+          ? (remainingLists[0]?.id ?? null)
+          : state.selectedListId;
+
+        const { [listId]: _removed, ...remainingFilters } = state.priorityListFilterByWorkspace;
+        savePriorityListFilters(remainingFilters);
+
+        return {
+          lists: remainingLists,
+          projects: state.projects.filter((project) => project.workspace_id !== listId),
+          tasks: wasSelected ? [] : state.tasks.filter((task) => task.workspace_id !== listId),
+          selectedListId: nextSelectedListId,
+          selectedProjectId: wasSelected ? null : state.selectedProjectId,
+          priorityListFilterByWorkspace: remainingFilters,
+        };
+      });
+
+      const nextListId = get().selectedListId;
+      if (nextListId !== null) {
+        await get().fetchProjects(nextListId);
+        await get().fetchTasks(nextListId);
+      }
+
+      return true;
+    } catch (error) {
+      set({ error: getAxiosErrorMessage(error, 'Failed to delete workspace.') });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteProject: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await deleteProjectApi(projectId);
+
+      set((state) => {
+        const deletedProject = state.projects.find((project) => project.id === projectId);
+        const workspaceId = deletedProject?.workspace_id;
+
+        const nextFilters = { ...state.priorityListFilterByWorkspace };
+        if (workspaceId !== undefined && nextFilters[workspaceId] === projectId) {
+          nextFilters[workspaceId] = null;
+          savePriorityListFilters(nextFilters);
+        }
+
+        return {
+          projects: state.projects.filter((project) => project.id !== projectId),
+          tasks: state.tasks.filter((task) => task.project_id !== projectId),
+          selectedProjectId: state.selectedProjectId === projectId ? null : state.selectedProjectId,
+          priorityListFilterByWorkspace: nextFilters,
+        };
+      });
+
+      return true;
+    } catch (error) {
+      set({ error: getAxiosErrorMessage(error, 'Failed to delete project.') });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteTask: async (taskId) => {
+    set({ error: null });
+    try {
+      await deleteTaskApi(taskId);
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== taskId),
+      }));
+      return true;
+    } catch (error) {
+      set({ error: getAxiosErrorMessage(error, 'Failed to delete task.') });
+      return false;
     }
   },
 

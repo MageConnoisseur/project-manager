@@ -22,6 +22,7 @@ class TaskCreateRequest(BaseModel):
     is_recurring: bool = False
     recurrence_interval: Optional[int] = Field(default=None, ge=1)
     recurrence_unit: Optional[RecurrenceUnit] = None
+    recurrence_end_date: Optional[date] = None
 
 
 class TaskUpdateRequest(BaseModel):
@@ -35,6 +36,7 @@ class TaskUpdateRequest(BaseModel):
     is_recurring: Optional[bool] = None
     recurrence_interval: Optional[int] = Field(default=None, ge=1)
     recurrence_unit: Optional[RecurrenceUnit] = None
+    recurrence_end_date: Optional[date] = None
     project_id: Optional[int] = Field(
         default=None,
         description="Move task to another project (must belong to you)",
@@ -55,6 +57,7 @@ class TaskResponse(BaseModel):
     is_recurring: bool
     recurrence_interval: Optional[int]
     recurrence_unit: Optional[RecurrenceUnit]
+    recurrence_end_date: Optional[date]
     created_at: datetime
     updated_at: datetime
 

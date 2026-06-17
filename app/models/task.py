@@ -24,6 +24,7 @@ class Task(SQLModel, table=True):
     is_recurring: bool = Field(default=False)
     recurrence_interval: Optional[int] = Field(default=None, ge=1)
     recurrence_unit: Optional[RecurrenceUnit] = Field(default=None)
+    recurrence_end_date: Optional[date] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

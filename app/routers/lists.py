@@ -6,13 +6,12 @@ Every route requires authentication and only touches rows where user_id matches.
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
 from app.core.dependencies import get_current_user, get_db
 from app.core.ownership import get_owned_workspace
-from app.models import User, Workspace
+from app.models import Project, Task, User, Workspace
 from app.schemas.list import ListCreateRequest, ListResponse, ListUpdateRequest
 
 router = APIRouter(prefix="/lists", tags=["lists"])
@@ -84,24 +83,15 @@ def delete_list(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """
-    Delete a list owned by the current user.
-
-    Postgres will block the delete if projects or tasks still reference this list.
-    We catch that error and return 409 Conflict with a helpful message instead of 500.
+    Delete a list owned by the current user, including all projects and tasks inside it.
     """
     workspace = get_owned_workspace(db, list_id, current_user)
 
-    try:
-        db.delete(workspace)
-        db.commit()
-    except IntegrityError:
-        # A child row (project or task) still points at this workspace_id.
-        # Roll back so the session is clean for the next request.
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Cannot delete this list while it still has projects or tasks. "
-                "Delete those items first, then try again."
-            ),
-        )
+    for task in db.exec(select(Task).where(Task.workspace_id == workspace.id)).all():
+        db.delete(task)
+
+    for project in db.exec(select(Project).where(Project.workspace_id == workspace.id)).all():
+        db.delete(project)
+
+    db.delete(workspace)
+    db.commit()

@@ -7,16 +7,19 @@
  */
 
 import { DragDropContext, Draggable, Droppable, type DropResult } from '@hello-pangea/dnd';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useTaskStore } from '../../store/taskStore';
+import { formatRecurrenceSummary } from '../../utils/recurrence';
 import {
   getVisiblePriorityTasks,
   mergeVisibleReorderIntoWorkspace,
   reorderArray,
   sortTasksByPriority,
 } from '../../utils/priorityReorder';
+import { isTaskActiveInPriorityList } from '../../utils/taskVisibility';
 import { PriorityListFilterBar } from './PriorityListFilterBar';
+import { TaskEditPanel } from './TaskEditPanel';
 
 function getProjectTitle(projects: { id: number; title: string }[], projectId: number): string {
   const project = projects.find((item) => item.id === projectId);
@@ -30,8 +33,12 @@ export function PriorityListView() {
   const priorityListFilterByWorkspace = useTaskStore((state) => state.priorityListFilterByWorkspace);
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
   const reorderTasks = useTaskStore((state) => state.reorderTasks);
+  const updateTask = useTaskStore((state) => state.updateTask);
   const storeError = useTaskStore((state) => state.error);
   const isLoading = useTaskStore((state) => state.isLoading);
+
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
 
   const projectFilterId =
     selectedListId !== null
@@ -40,10 +47,17 @@ export function PriorityListView() {
 
   const fullWorkspaceTasks = useMemo(() => sortTasksByPriority(tasks), [tasks]);
 
-  const displayedTasks = useMemo(
-    () => getVisiblePriorityTasks(fullWorkspaceTasks, projectFilterId),
-    [fullWorkspaceTasks, projectFilterId],
+  const activeWorkspaceTasks = useMemo(
+    () => fullWorkspaceTasks.filter((task) => isTaskActiveInPriorityList(task)),
+    [fullWorkspaceTasks],
   );
+
+  const displayedTasks = useMemo(
+    () => getVisiblePriorityTasks(activeWorkspaceTasks, projectFilterId),
+    [activeWorkspaceTasks, projectFilterId],
+  );
+
+  const scheduledTaskCount = fullWorkspaceTasks.length - activeWorkspaceTasks.length;
 
   useEffect(() => {
     if (selectedListId !== null) {
@@ -76,6 +90,15 @@ export function PriorityListView() {
     await reorderTasks(mergedFullList);
   }
 
+  async function handleCompleteToggle(taskId: number, isCompleted: boolean) {
+    setCompletingTaskId(taskId);
+    try {
+      await updateTask(taskId, { is_completed: isCompleted });
+    } finally {
+      setCompletingTaskId(null);
+    }
+  }
+
   if (selectedListId === null) {
     return <p className="priority-list__hint">Select a workspace to view its priority list.</p>;
   }
@@ -97,13 +120,20 @@ export function PriorityListView() {
           : 'Drag tasks to reorder the full workspace list. Changes save automatically.'}
       </p>
 
+      {scheduledTaskCount > 0 && (
+        <p className="priority-list__hint">
+          {scheduledTaskCount} recurring {scheduledTaskCount === 1 ? 'task is' : 'tasks are'} scheduled
+          for a future date and hidden until due.
+        </p>
+      )}
+
       {storeError && <p className="text-red-500">{storeError}</p>}
 
       {displayedTasks.length === 0 ? (
         <p className="priority-list__hint">
           {isFiltered
-            ? 'No tasks in this project yet. Create one using the sidebar project and the form below.'
-            : 'No tasks in this workspace yet. Create one below.'}
+            ? 'No active tasks in this project. Create one using the sidebar project and the form below.'
+            : 'No active tasks in this workspace yet. Create one below.'}
         </p>
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -114,35 +144,80 @@ export function PriorityListView() {
                 ref={droppableProvided.innerRef}
                 {...droppableProvided.droppableProps}
               >
-                {displayedTasks.map((task, index) => (
-                  <Draggable key={task.id} draggableId={String(task.id)} index={index}>
-                    {(draggableProvided, snapshot) => (
-                      <li
-                        className={
-                          snapshot.isDragging
-                            ? 'priority-list__item priority-list__item--dragging'
-                            : 'priority-list__item'
-                        }
-                        ref={draggableProvided.innerRef}
-                        {...draggableProvided.draggableProps}
-                      >
-                        <span
-                          className="priority-list__handle"
-                          {...draggableProvided.dragHandleProps}
-                          aria-label="Drag to reorder"
+                {displayedTasks.map((task, index) => {
+                  const recurrenceSummary = formatRecurrenceSummary(task);
+                  const isEditing = editingTaskId === task.id;
+
+                  return (
+                    <Draggable key={task.id} draggableId={String(task.id)} index={index}>
+                      {(draggableProvided, snapshot) => (
+                        <li
+                          className={
+                            snapshot.isDragging
+                              ? 'priority-list__item priority-list__item--dragging'
+                              : 'priority-list__item'
+                          }
+                          ref={draggableProvided.innerRef}
+                          {...draggableProvided.draggableProps}
                         >
-                          ⋮⋮
-                        </span>
-                        <span className="priority-list__label">
-                          {!isFiltered && (
-                            <>{getProjectTitle(projects, task.project_id)} — </>
-                          )}
-                          {task.title}
-                        </span>
-                      </li>
-                    )}
-                  </Draggable>
-                ))}
+                          <span
+                            className="priority-list__handle"
+                            {...draggableProvided.dragHandleProps}
+                            aria-label="Drag to reorder"
+                          >
+                            ⋮⋮
+                          </span>
+
+                          <input
+                            className="priority-list__checkbox"
+                            type="checkbox"
+                            checked={task.is_completed}
+                            disabled={completingTaskId === task.id}
+                            aria-label={`Mark "${task.title}" complete`}
+                            onChange={(event) =>
+                              void handleCompleteToggle(task.id, event.target.checked)
+                            }
+                          />
+
+                          <div className="priority-list__content">
+                            <div className="priority-list__label">
+                              {!isFiltered && (
+                                <>{getProjectTitle(projects, task.project_id)} — </>
+                              )}
+                              <span>{task.title}</span>
+                            </div>
+
+                            {!isEditing && task.description.trim() !== '' && (
+                              <p className="priority-list__notes">{task.description}</p>
+                            )}
+
+                            {recurrenceSummary && (
+                              <p className="priority-list__meta">{recurrenceSummary}</p>
+                            )}
+
+                            {isEditing && (
+                              <TaskEditPanel
+                                key={task.id}
+                                task={task}
+                                onClose={() => setEditingTaskId(null)}
+                              />
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn--small"
+                            onClick={() =>
+                              setEditingTaskId((current) => (current === task.id ? null : task.id))
+                            }
+                          >
+                            {isEditing ? 'Close' : 'Edit'}
+                          </button>
+                        </li>
+                      )}
+                    </Draggable>
+                  );
+                })}
                 {droppableProvided.placeholder}
               </ul>
             )}

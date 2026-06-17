@@ -10,6 +10,12 @@ import type { FormEvent } from 'react';
 
 import { getAxiosErrorMessage } from '../../api/errors';
 import { useTaskStore } from '../../store/taskStore';
+import {
+  RecurrenceFields,
+  defaultRecurrenceFormValues,
+  recurrencePayloadFromForm,
+  type RecurrenceFormValues,
+} from './RecurrenceFields';
 
 export function CreateTaskForm() {
   const selectedProjectId = useTaskStore((state) => state.selectedProjectId);
@@ -19,6 +25,7 @@ export function CreateTaskForm() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [recurrence, setRecurrence] = useState<RecurrenceFormValues>(defaultRecurrenceFormValues());
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,6 +52,7 @@ export function CreateTaskForm() {
         project_id: selectedProjectId,
         title: title.trim(),
         description: description.trim(),
+        ...recurrencePayloadFromForm(recurrence),
       });
 
       if (!created) {
@@ -55,6 +63,7 @@ export function CreateTaskForm() {
 
       setTitle('');
       setDescription('');
+      setRecurrence(defaultRecurrenceFormValues());
       await fetchTasks();
     } catch (submitError) {
       setError(getAxiosErrorMessage(submitError, 'Failed to create task.'));
@@ -85,7 +94,7 @@ export function CreateTaskForm() {
       </label>
 
       <label className="task-form__field">
-        <span>Description (optional)</span>
+        <span>Notes (optional)</span>
         <textarea
           name="description"
           rows={2}
@@ -94,6 +103,12 @@ export function CreateTaskForm() {
           disabled={selectedProjectId === null}
         />
       </label>
+
+      <RecurrenceFields
+        values={recurrence}
+        onChange={setRecurrence}
+        disabled={selectedProjectId === null || isSubmitting}
+      />
 
       {error && <p className="text-red-500">{error}</p>}
 

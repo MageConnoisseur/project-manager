@@ -36,3 +36,13 @@ export async function createProject(
   });
   return data;
 }
+
+/** Delete a workspace / list and all projects and tasks inside it */
+export async function deleteList(listId: number): Promise<void> {
+  await apiClient.delete(`/lists/${listId}`);
+}
+
+/** Delete a project and all tasks inside it */
+export async function deleteProject(projectId: number): Promise<void> {
+  await apiClient.delete(`/projects/${projectId}`);
+}

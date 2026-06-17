@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.core.dependencies import get_current_user, get_db
@@ -131,23 +130,11 @@ def delete_project(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """
-    Delete a project owned by the user.
-
-    If tasks still reference this project, Postgres raises IntegrityError.
-    We return 409 Conflict so the client knows to delete tasks first.
-    """
+    """Delete a project owned by the user, including all tasks inside it."""
     project = get_owned_project(db, project_id, current_user)
 
-    try:
-        db.delete(project)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Cannot delete this project while it still has tasks. "
-                "Delete those tasks first, then try again."
-            ),
-        )
+    for task in db.exec(select(Task).where(Task.project_id == project.id)).all():
+        db.delete(task)
+
+    db.delete(project)
+    db.commit()
