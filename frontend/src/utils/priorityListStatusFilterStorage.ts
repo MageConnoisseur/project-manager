@@ -1,7 +1,7 @@
 /**
  * Persist priority-list status filters per workspace in localStorage.
  *
- * Key: workspace id. Value: "active" (default) or "completed".
+ * Key: workspace id. Value: "active" (default), "completed", or "scheduled".
  */
 
 import type { PriorityListStatusFilter } from './taskVisibility';
@@ -11,7 +11,7 @@ const STORAGE_KEY = 'priority-list-status-filter-by-workspace';
 export type PriorityListStatusFilterMap = Record<number, PriorityListStatusFilter>;
 
 function isValidStatusFilter(value: unknown): value is PriorityListStatusFilter {
-  return value === 'active' || value === 'completed';
+  return value === 'active' || value === 'completed' || value === 'scheduled';
 }
 
 export function loadPriorityListStatusFilters(): PriorityListStatusFilterMap {

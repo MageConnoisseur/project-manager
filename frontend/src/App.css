@@ -543,6 +543,15 @@
   color: var(--color-text-muted);
 }
 
+.priority-list__item--scheduled {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+.priority-list__item--scheduled .priority-list__label span {
+  color: var(--color-text-muted);
+}
+
 .priority-list__handle {
   cursor: grab;
   color: var(--color-text-muted);

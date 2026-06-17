@@ -36,7 +36,7 @@ interface PriorityTaskItemProps {
   task: Task;
   projects: { id: number; title: string }[];
   showProjectName: boolean;
-  isCompletedView: boolean;
+  variant: PriorityListStatusFilter;
   completingTaskId: number | null;
   editingTaskId: number | null;
   itemRef?: React.Ref<HTMLLIElement>;
@@ -52,7 +52,7 @@ function PriorityTaskItem({
   task,
   projects,
   showProjectName,
-  isCompletedView,
+  variant,
   completingTaskId,
   editingTaskId,
   itemRef,
@@ -67,7 +67,8 @@ function PriorityTaskItem({
   const isEditing = editingTaskId === task.id;
   const className = [
     'priority-list__item',
-    isCompletedView ? 'priority-list__item--completed' : '',
+    variant === 'completed' ? 'priority-list__item--completed' : '',
+    variant === 'scheduled' ? 'priority-list__item--scheduled' : '',
     isDragging ? 'priority-list__item--dragging' : '',
   ]
     .filter(Boolean)
@@ -75,7 +76,7 @@ function PriorityTaskItem({
 
   return (
     <li ref={itemRef} className={className} {...itemProps}>
-      {!isCompletedView && dragHandleProps && (
+      {variant === 'active' && dragHandleProps && (
         <span className="priority-list__handle" {...dragHandleProps} aria-label="Drag to reorder">
           ⋮⋮
         </span>
@@ -141,7 +142,7 @@ export function PriorityListView() {
       ? (priorityListStatusFilterByWorkspace[selectedListId] ?? 'active')
       : 'active';
 
-  const isCompletedView = statusFilter === 'completed';
+  const isActiveView = statusFilter === 'active';
 
   const fullWorkspaceTasks = useMemo(() => sortTasksByPriority(tasks), [tasks]);
 
@@ -219,20 +220,25 @@ export function PriorityListView() {
 
   const isProjectFiltered = projectFilterId !== null;
 
-  const emptyMessage = isCompletedView
-    ? isProjectFiltered
-      ? 'No completed tasks in this project yet.'
-      : 'No completed tasks in this workspace yet.'
-    : isProjectFiltered
-      ? 'No active tasks in this project. Create one using the sidebar project and the form below.'
-      : 'No active tasks in this workspace yet. Create one below.';
+  const emptyMessage =
+    statusFilter === 'completed'
+      ? isProjectFiltered
+        ? 'No completed tasks in this project yet.'
+        : 'No completed tasks in this workspace yet.'
+      : statusFilter === 'scheduled'
+        ? isProjectFiltered
+          ? 'No scheduled recurring tasks in this project.'
+          : 'No scheduled recurring tasks in this workspace.'
+        : isProjectFiltered
+          ? 'No active tasks in this project. Create one using the sidebar project and the form below.'
+          : 'No active tasks in this workspace yet. Create one below.';
 
   return (
     <section className="priority-list">
       <h3>Priority list</h3>
       <PriorityListFilterBar />
 
-      {!isCompletedView && (
+      {isActiveView && (
         <p className="priority-list__hint">
           {isProjectFiltered
             ? 'Drag tasks to reorder this project within the workspace priority line.'
@@ -240,22 +246,29 @@ export function PriorityListView() {
         </p>
       )}
 
-      {isCompletedView && (
+      {statusFilter === 'completed' && (
         <p className="priority-list__hint">
           Completed tasks are read-only in the list order. Uncheck a task to return it to the active
           priority list.
         </p>
       )}
 
-      {!isCompletedView && scheduledRecurringCount > 0 && (
+      {statusFilter === 'scheduled' && (
         <p className="priority-list__hint">
-          {scheduledRecurringCount} recurring{' '}
-          {scheduledRecurringCount === 1 ? 'task is' : 'tasks are'} scheduled for a future date
-          and hidden until due.
+          These recurring tasks are waiting for their next due date. Edit a task to change its
+          schedule.
         </p>
       )}
 
-      {!isCompletedView && completedCount > 0 && (
+      {isActiveView && scheduledRecurringCount > 0 && (
+        <p className="priority-list__hint">
+          {scheduledRecurringCount} recurring{' '}
+          {scheduledRecurringCount === 1 ? 'task is' : 'tasks are'} scheduled for a future date.
+          Use the &ldquo;Scheduled recurring&rdquo; filter above to view them.
+        </p>
+      )}
+
+      {isActiveView && completedCount > 0 && (
         <p className="priority-list__hint">
           {completedCount} completed {completedCount === 1 ? 'task' : 'tasks'} hidden. Use the
           &ldquo;Completed tasks&rdquo; filter above to view them.
@@ -266,24 +279,7 @@ export function PriorityListView() {
 
       {displayedTasks.length === 0 ? (
         <p className="priority-list__hint">{emptyMessage}</p>
-      ) : isCompletedView ? (
-        <ul className="priority-list__items">
-          {displayedTasks.map((task) => (
-            <PriorityTaskItem
-              key={task.id}
-              task={task}
-              projects={projects}
-              showProjectName={!isProjectFiltered}
-              isCompletedView
-              completingTaskId={completingTaskId}
-              editingTaskId={editingTaskId}
-              onCompleteToggle={(taskId, isCompleted) => void handleCompleteToggle(taskId, isCompleted)}
-              onToggleEdit={handleToggleEdit}
-              onCloseEdit={() => setEditingTaskId(null)}
-            />
-          ))}
-        </ul>
-      ) : (
+      ) : isActiveView ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="priority-tasks">
             {(droppableProvided) => (
@@ -299,7 +295,7 @@ export function PriorityListView() {
                         task={task}
                         projects={projects}
                         showProjectName={!isProjectFiltered}
-                        isCompletedView={false}
+                        variant="active"
                         completingTaskId={completingTaskId}
                         editingTaskId={editingTaskId}
                         itemRef={draggableProvided.innerRef}
@@ -320,6 +316,23 @@ export function PriorityListView() {
             )}
           </Droppable>
         </DragDropContext>
+      ) : (
+        <ul className="priority-list__items">
+          {displayedTasks.map((task) => (
+            <PriorityTaskItem
+              key={task.id}
+              task={task}
+              projects={projects}
+              showProjectName={!isProjectFiltered}
+              variant={statusFilter}
+              completingTaskId={completingTaskId}
+              editingTaskId={editingTaskId}
+              onCompleteToggle={(taskId, isCompleted) => void handleCompleteToggle(taskId, isCompleted)}
+              onToggleEdit={handleToggleEdit}
+              onCloseEdit={() => setEditingTaskId(null)}
+            />
+          ))}
+        </ul>
       )}
     </section>
   );

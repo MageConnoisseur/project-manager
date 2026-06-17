@@ -1,6 +1,6 @@
 import type { Task } from '../types';
 
-export type PriorityListStatusFilter = 'active' | 'completed';
+export type PriorityListStatusFilter = 'active' | 'completed' | 'scheduled';
 
 /** ISO date string (YYYY-MM-DD) for the user's local calendar day. */
 export function todayIsoDate(): string {
@@ -41,7 +41,7 @@ export function isTaskCompletedInPriorityList(task: Task): boolean {
   return task.is_completed;
 }
 
-/** Apply the priority list status filter (active vs completed history). */
+/** Apply the priority list status filter (active, completed, or scheduled recurring). */
 export function isTaskVisibleByStatusFilter(
   task: Task,
   statusFilter: PriorityListStatusFilter,
@@ -49,6 +49,10 @@ export function isTaskVisibleByStatusFilter(
 ): boolean {
   if (statusFilter === 'completed') {
     return isTaskCompletedInPriorityList(task);
+  }
+
+  if (statusFilter === 'scheduled') {
+    return isRecurringTaskScheduledForFuture(task, today);
   }
 
   return isTaskActiveInPriorityList(task, today);

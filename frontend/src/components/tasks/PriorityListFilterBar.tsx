@@ -59,6 +59,7 @@ export function PriorityListFilterBar() {
           >
             <option value="active">Active tasks</option>
             <option value="completed">Completed tasks</option>
+            <option value="scheduled">Scheduled recurring</option>
           </select>
         </div>
 
@@ -86,6 +87,13 @@ export function PriorityListFilterBar() {
         <p className="priority-filter__note">
           Showing completed one-off tasks and recurring tasks that have finished their schedule.
           Uncheck a task to move it back to the active list.
+        </p>
+      )}
+
+      {currentStatusFilter === 'scheduled' && (
+        <p className="priority-filter__note">
+          Showing recurring tasks waiting for their next due date. They will return to the active
+          list automatically when due.
         </p>
       )}
 
