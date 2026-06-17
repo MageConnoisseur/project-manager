@@ -534,6 +534,15 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.priority-list__item--completed {
+  opacity: 0.75;
+}
+
+.priority-list__item--completed .priority-list__label span {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
 .priority-list__handle {
   cursor: grab;
   color: var(--color-text-muted);
@@ -689,6 +698,16 @@
   background: var(--color-hover);
   border-radius: 8px;
   border: 1px solid var(--color-border);
+}
+
+.priority-filter__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+
+.priority-filter__field {
+  min-width: 0;
 }
 
 .priority-filter__label {

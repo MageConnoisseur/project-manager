@@ -31,7 +31,13 @@ import {
   savePriorityListFilters,
   type PriorityListFilterMap,
 } from '../utils/priorityListFilterStorage';
+import {
+  loadPriorityListStatusFilters,
+  savePriorityListStatusFilters,
+  type PriorityListStatusFilterMap,
+} from '../utils/priorityListStatusFilterStorage';
 import { sortTasksByPriority } from '../utils/priorityReorder';
+import type { PriorityListStatusFilter } from '../utils/taskVisibility';
 
 /** Read-only slice of state exposed to components */
 interface TaskState {
@@ -45,6 +51,11 @@ interface TaskState {
    * Persisted to localStorage; separate from sidebar selectedProjectId (5A).
    */
   priorityListFilterByWorkspace: PriorityListFilterMap;
+  /**
+   * Priority list status filter per workspace (active vs completed history).
+   * Persisted to localStorage.
+   */
+  priorityListStatusFilterByWorkspace: PriorityListStatusFilterMap;
   isLoading: boolean;
   /** Field-level / store-level errors (forms may use their own local error too) */
   error: string | null;
@@ -57,6 +68,11 @@ interface TaskActions {
   clearError: () => void;
   /** Set priority list filter for one workspace; saved to localStorage (4B) */
   setPriorityListProjectFilter: (workspaceId: number, projectId: number | null) => void;
+  /** Set priority list status filter for one workspace; saved to localStorage */
+  setPriorityListStatusFilter: (
+    workspaceId: number,
+    statusFilter: PriorityListStatusFilter,
+  ) => void;
 
   fetchLists: () => Promise<void>;
   fetchProjects: (workspaceId?: number) => Promise<void>;
@@ -85,6 +101,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   selectedListId: null,
   selectedProjectId: null,
   priorityListFilterByWorkspace: loadPriorityListFilters(),
+  priorityListStatusFilterByWorkspace: loadPriorityListStatusFilters(),
   isLoading: false,
   error: null,
 
@@ -108,6 +125,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const next = { ...get().priorityListFilterByWorkspace, [workspaceId]: projectId };
     set({ priorityListFilterByWorkspace: next });
     savePriorityListFilters(next);
+  },
+
+  setPriorityListStatusFilter: (workspaceId, statusFilter) => {
+    const next = { ...get().priorityListStatusFilterByWorkspace, [workspaceId]: statusFilter };
+    set({ priorityListStatusFilterByWorkspace: next });
+    savePriorityListStatusFilters(next);
   },
 
   fetchLists: async () => {
@@ -258,7 +281,10 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
           : state.selectedListId;
 
         const { [listId]: _removed, ...remainingFilters } = state.priorityListFilterByWorkspace;
+        const { [listId]: _removedStatus, ...remainingStatusFilters } =
+          state.priorityListStatusFilterByWorkspace;
         savePriorityListFilters(remainingFilters);
+        savePriorityListStatusFilters(remainingStatusFilters);
 
         return {
           lists: remainingLists,
@@ -267,6 +293,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
           selectedListId: nextSelectedListId,
           selectedProjectId: wasSelected ? null : state.selectedProjectId,
           priorityListFilterByWorkspace: remainingFilters,
+          priorityListStatusFilterByWorkspace: remainingStatusFilters,
         };
       });
 
