@@ -24,6 +24,7 @@ import {
   isTaskVisibleByStatusFilter,
   type PriorityListStatusFilter,
 } from '../../utils/taskVisibility';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { PriorityListFilterBar } from './PriorityListFilterBar';
 import { TaskEditPanel } from './TaskEditPanel';
 
@@ -38,12 +39,14 @@ interface PriorityTaskItemProps {
   showProjectName: boolean;
   variant: PriorityListStatusFilter;
   completingTaskId: number | null;
+  deletingTaskId: number | null;
   editingTaskId: number | null;
   itemRef?: React.Ref<HTMLLIElement>;
   itemProps?: React.HTMLAttributes<HTMLLIElement>;
   dragHandleProps?: React.HTMLAttributes<HTMLSpanElement>;
   isDragging?: boolean;
   onCompleteToggle: (taskId: number, isCompleted: boolean) => void;
+  onDelete: (taskId: number, title: string) => void;
   onToggleEdit: (taskId: number) => void;
   onCloseEdit: () => void;
 }
@@ -54,12 +57,14 @@ function PriorityTaskItem({
   showProjectName,
   variant,
   completingTaskId,
+  deletingTaskId,
   editingTaskId,
   itemRef,
   itemProps,
   dragHandleProps,
   isDragging = false,
   onCompleteToggle,
+  onDelete,
   onToggleEdit,
   onCloseEdit,
 }: PriorityTaskItemProps) {
@@ -111,6 +116,17 @@ function PriorityTaskItem({
       <button type="button" className="btn btn--small" onClick={() => onToggleEdit(task.id)}>
         {isEditing ? 'Close' : 'Edit'}
       </button>
+
+      <button
+        type="button"
+        className="priority-list__delete"
+        aria-label={`Delete task ${task.title}`}
+        title={`Delete ${task.title}`}
+        disabled={deletingTaskId === task.id}
+        onClick={() => onDelete(task.id, task.title)}
+      >
+        ×
+      </button>
     </li>
   );
 }
@@ -126,11 +142,16 @@ export function PriorityListView() {
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
   const reorderTasks = useTaskStore((state) => state.reorderTasks);
   const updateTask = useTaskStore((state) => state.updateTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
   const storeError = useTaskStore((state) => state.error);
   const isLoading = useTaskStore((state) => state.isLoading);
 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
+  const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: number; title: string } | null>(
+    null,
+  );
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
 
   const projectFilterId =
     selectedListId !== null
@@ -208,6 +229,26 @@ export function PriorityListView() {
 
   function handleToggleEdit(taskId: number) {
     setEditingTaskId((current) => (current === taskId ? null : taskId));
+  }
+
+  async function handleConfirmDeleteTask() {
+    if (!pendingDeleteTask) {
+      return;
+    }
+
+    setDeletingTaskId(pendingDeleteTask.id);
+
+    try {
+      const success = await deleteTask(pendingDeleteTask.id);
+      if (success) {
+        if (editingTaskId === pendingDeleteTask.id) {
+          setEditingTaskId(null);
+        }
+        setPendingDeleteTask(null);
+      }
+    } finally {
+      setDeletingTaskId(null);
+    }
   }
 
   if (selectedListId === null) {
@@ -297,6 +338,7 @@ export function PriorityListView() {
                         showProjectName={!isProjectFiltered}
                         variant="active"
                         completingTaskId={completingTaskId}
+                        deletingTaskId={deletingTaskId}
                         editingTaskId={editingTaskId}
                         itemRef={draggableProvided.innerRef}
                         itemProps={draggableProvided.draggableProps}
@@ -305,6 +347,7 @@ export function PriorityListView() {
                         onCompleteToggle={(taskId, isCompleted) =>
                           void handleCompleteToggle(taskId, isCompleted)
                         }
+                        onDelete={(taskId, title) => setPendingDeleteTask({ id: taskId, title })}
                         onToggleEdit={handleToggleEdit}
                         onCloseEdit={() => setEditingTaskId(null)}
                       />
@@ -326,14 +369,33 @@ export function PriorityListView() {
               showProjectName={!isProjectFiltered}
               variant={statusFilter}
               completingTaskId={completingTaskId}
+              deletingTaskId={deletingTaskId}
               editingTaskId={editingTaskId}
               onCompleteToggle={(taskId, isCompleted) => void handleCompleteToggle(taskId, isCompleted)}
+              onDelete={(taskId, title) => setPendingDeleteTask({ id: taskId, title })}
               onToggleEdit={handleToggleEdit}
               onCloseEdit={() => setEditingTaskId(null)}
             />
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingDeleteTask !== null}
+        title="Delete task?"
+        message={
+          pendingDeleteTask
+            ? `Delete "${pendingDeleteTask.title}"? This cannot be undone.`
+            : ''
+        }
+        isLoading={deletingTaskId !== null}
+        onConfirm={() => void handleConfirmDeleteTask()}
+        onCancel={() => {
+          if (deletingTaskId === null) {
+            setPendingDeleteTask(null);
+          }
+        }}
+      />
     </section>
   );
 }
