@@ -18,6 +18,7 @@ import {
   reorderArray,
   sortTasksByPriority,
 } from '../../utils/priorityReorder';
+import { getCompletedProjectIds } from '../../utils/projectVisibility';
 import {
   isRecurringTaskScheduledForFuture,
   isTaskCompletedInPriorityList,
@@ -165,7 +166,15 @@ export function PriorityListView() {
 
   const isActiveView = statusFilter === 'active';
 
-  const fullWorkspaceTasks = useMemo(() => sortTasksByPriority(tasks), [tasks]);
+  const completedProjectIds = useMemo(() => getCompletedProjectIds(projects), [projects]);
+
+  const fullWorkspaceTasks = useMemo(
+    () =>
+      sortTasksByPriority(
+        tasks.filter((task) => !completedProjectIds.has(task.project_id)),
+      ),
+    [tasks, completedProjectIds],
+  );
 
   const statusFilteredTasks = useMemo(
     () => fullWorkspaceTasks.filter((task) => isTaskVisibleByStatusFilter(task, statusFilter)),

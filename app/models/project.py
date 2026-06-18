@@ -16,6 +16,7 @@ class Project(SQLModel, table=True):
     title: str = Field(max_length=255)
     description: str = Field(default="")
     due_date: Optional[date] = Field(default=None, index=True)
+    is_completed: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

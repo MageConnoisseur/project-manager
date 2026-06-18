@@ -16,6 +16,7 @@ import {
   deleteProject as deleteProjectApi,
   fetchLists,
   fetchProjects,
+  updateProject as updateProjectApi,
 } from '../api/lists';
 import {
   createTask as createTaskApi,
@@ -37,6 +38,7 @@ import {
   type PriorityListStatusFilterMap,
 } from '../utils/priorityListStatusFilterStorage';
 import { sortTasksByPriority } from '../utils/priorityReorder';
+import { isActiveProject } from '../utils/projectVisibility';
 import type { PriorityListStatusFilter } from '../utils/taskVisibility';
 
 /** Read-only slice of state exposed to components */
@@ -83,6 +85,7 @@ interface TaskActions {
   updateTask: (taskId: number, payload: UpdateTaskPayload) => Promise<Task | null>;
   deleteList: (listId: number) => Promise<boolean>;
   deleteProject: (projectId: number) => Promise<boolean>;
+  setProjectCompleted: (projectId: number, isCompleted: boolean) => Promise<boolean>;
   deleteTask: (taskId: number) => Promise<boolean>;
 
   /**
@@ -160,7 +163,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         if (
           savedFilter !== null &&
           savedFilter !== undefined &&
-          !projects.some((project) => project.id === savedFilter)
+          !projects.some((project) => project.id === savedFilter && isActiveProject(project))
         ) {
           get().setPriorityListProjectFilter(listId, null);
         }
@@ -338,6 +341,47 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       return true;
     } catch (error) {
       set({ error: getAxiosErrorMessage(error, 'Failed to delete project.') });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  setProjectCompleted: async (projectId, isCompleted) => {
+    set({ isLoading: true, error: null });
+    try {
+      const updated = await updateProjectApi(projectId, { is_completed: isCompleted });
+
+      set((state) => {
+        const nextProjects = state.projects.map((project) =>
+          project.id === projectId ? updated : project,
+        );
+
+        const workspaceId = updated.workspace_id;
+        const nextFilters = { ...state.priorityListFilterByWorkspace };
+        if (isCompleted && nextFilters[workspaceId] === projectId) {
+          nextFilters[workspaceId] = null;
+          savePriorityListFilters(nextFilters);
+        }
+
+        return {
+          projects: nextProjects,
+          selectedProjectId:
+            isCompleted && state.selectedProjectId === projectId
+              ? null
+              : state.selectedProjectId,
+          priorityListFilterByWorkspace: nextFilters,
+        };
+      });
+
+      return true;
+    } catch (error) {
+      set({
+        error: getAxiosErrorMessage(
+          error,
+          isCompleted ? 'Failed to mark project complete.' : 'Failed to restore project.',
+        ),
+      });
       return false;
     } finally {
       set({ isLoading: false });

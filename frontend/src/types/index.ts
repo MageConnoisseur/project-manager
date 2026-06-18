@@ -27,6 +27,7 @@ export interface Project {
   title: string;
   description: string;
   due_date: string | null;
+  is_completed: boolean;
   created_at: string;
   updated_at: string;
 }

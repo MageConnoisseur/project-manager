@@ -8,6 +8,7 @@
 import type { ChangeEvent } from 'react';
 
 import { useTaskStore } from '../../store/taskStore';
+import { getActiveProjectsInWorkspace } from '../../utils/projectVisibility';
 import type { PriorityListStatusFilter } from '../../utils/taskVisibility';
 
 export function PriorityListFilterBar() {
@@ -25,7 +26,7 @@ export function PriorityListFilterBar() {
   }
 
   const workspaceId = selectedListId;
-  const projectsInWorkspace = projects.filter((project) => project.workspace_id === workspaceId);
+  const projectsInWorkspace = getActiveProjectsInWorkspace(projects, workspaceId);
   const currentFilter = priorityListFilterByWorkspace[workspaceId] ?? null;
   const currentStatusFilter = priorityListStatusFilterByWorkspace[workspaceId] ?? 'active';
 

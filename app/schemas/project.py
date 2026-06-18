@@ -26,6 +26,7 @@ class ProjectUpdateRequest(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = None
     due_date: Optional[date] = None
+    is_completed: Optional[bool] = None
     workspace_id: Optional[int] = Field(
         default=None,
         description="Move project to another list (must still belong to you)",
@@ -40,6 +41,7 @@ class ProjectResponse(BaseModel):
     title: str
     description: str
     due_date: Optional[date]
+    is_completed: bool
     created_at: datetime
     updated_at: datetime
 

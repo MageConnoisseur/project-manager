@@ -46,3 +46,12 @@ export async function deleteList(listId: number): Promise<void> {
 export async function deleteProject(projectId: number): Promise<void> {
   await apiClient.delete(`/projects/${projectId}`);
 }
+
+/** Mark a project complete or restore it to active */
+export async function updateProject(
+  projectId: number,
+  payload: { is_completed?: boolean },
+): Promise<Project> {
+  const { data } = await apiClient.put<Project>(`/projects/${projectId}`, payload);
+  return data;
+}

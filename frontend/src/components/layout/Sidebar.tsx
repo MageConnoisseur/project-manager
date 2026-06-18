@@ -3,7 +3,9 @@
  *
  * Lists workspaces and projects from the store, with inline forms to create
  * each. Sidebar project selection is used when creating tasks (not the
- * priority list filter). Delete buttons remove items after confirmation.
+ * priority list filter). Active projects can be marked complete (archived)
+ * or deleted. Completed projects appear in a collapsible section and can
+ * be restored.
  */
 
 import { useState } from 'react';
@@ -12,6 +14,10 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 import { CreateProjectForm } from '../projects/CreateProjectForm';
 import { CreateWorkspaceForm } from '../workspace/CreateWorkspaceForm';
 import { useTaskStore } from '../../store/taskStore';
+import {
+  getActiveProjectsInWorkspace,
+  getCompletedProjectsInWorkspace,
+} from '../../utils/projectVisibility';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -32,13 +38,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const selectedProjectId = useTaskStore((state) => state.selectedProjectId);
   const deleteList = useTaskStore((state) => state.deleteList);
   const deleteProject = useTaskStore((state) => state.deleteProject);
+  const setProjectCompleted = useTaskStore((state) => state.setProjectCompleted);
   const isLoading = useTaskStore((state) => state.isLoading);
 
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
+  const [showCompletedProjects, setShowCompletedProjects] = useState(false);
 
-  const projectsForSelectedList = projects.filter(
-    (project) => project.workspace_id === selectedListId,
-  );
+  const activeProjectsForSelectedList =
+    selectedListId === null
+      ? []
+      : getActiveProjectsInWorkspace(projects, selectedListId);
+
+  const completedProjectsForSelectedList =
+    selectedListId === null
+      ? []
+      : getCompletedProjectsInWorkspace(projects, selectedListId);
 
   function handleSelectList(listId: number) {
     selectList(listId);
@@ -141,11 +155,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <h2 className="app-sidebar__section-title">Projects</h2>
             {selectedListId === null ? (
               <p className="app-sidebar__hint">Select a workspace to see or add projects.</p>
-            ) : projectsForSelectedList.length === 0 ? (
-              <p className="app-sidebar__hint">No projects yet — add one below.</p>
+            ) : activeProjectsForSelectedList.length === 0 ? (
+              <p className="app-sidebar__hint">No active projects — add one below.</p>
             ) : (
               <ul className="app-sidebar__list app-sidebar__list--nested">
-                {projectsForSelectedList.map((project) => {
+                {activeProjectsForSelectedList.map((project) => {
                   const isSelected = project.id === selectedProjectId;
                   return (
                     <li key={project.id} className="app-sidebar__row">
@@ -159,6 +173,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         onClick={() => handleSelectProject(project.id)}
                       >
                         {project.title}
+                      </button>
+                      <button
+                        type="button"
+                        className="app-sidebar__complete"
+                        aria-label={`Mark project ${project.title} complete`}
+                        title={`Mark ${project.title} complete`}
+                        disabled={isLoading}
+                        onClick={() => void setProjectCompleted(project.id, true)}
+                      >
+                        ✓
                       </button>
                       <button
                         type="button"
@@ -180,6 +204,57 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 })}
               </ul>
             )}
+
+            {selectedListId !== null && completedProjectsForSelectedList.length > 0 && (
+              <div className="app-sidebar__archived">
+                <button
+                  type="button"
+                  className="app-sidebar__archived-toggle"
+                  aria-expanded={showCompletedProjects}
+                  onClick={() => setShowCompletedProjects((open) => !open)}
+                >
+                  Completed ({completedProjectsForSelectedList.length})
+                  <span aria-hidden="true">{showCompletedProjects ? '▾' : '▸'}</span>
+                </button>
+                {showCompletedProjects && (
+                  <ul className="app-sidebar__list app-sidebar__list--nested app-sidebar__list--archived">
+                    {completedProjectsForSelectedList.map((project) => (
+                      <li key={project.id} className="app-sidebar__row">
+                        <span className="app-sidebar__item app-sidebar__item--completed">
+                          {project.title}
+                        </span>
+                        <button
+                          type="button"
+                          className="app-sidebar__restore"
+                          aria-label={`Restore project ${project.title}`}
+                          title={`Restore ${project.title}`}
+                          disabled={isLoading}
+                          onClick={() => void setProjectCompleted(project.id, false)}
+                        >
+                          ↩
+                        </button>
+                        <button
+                          type="button"
+                          className="app-sidebar__delete"
+                          aria-label={`Delete project ${project.title}`}
+                          title={`Delete ${project.title}`}
+                          onClick={() =>
+                            setPendingDelete({
+                              type: 'project',
+                              id: project.id,
+                              name: project.title,
+                            })
+                          }
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             <CreateProjectForm />
           </section>
         </nav>

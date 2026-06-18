@@ -116,6 +116,8 @@ def update_project(
     if "due_date" in body.model_fields_set:
         # Allow explicitly clearing due_date by sending null in JSON.
         project.due_date = body.due_date
+    if body.is_completed is not None:
+        project.is_completed = body.is_completed
 
     project.updated_at = datetime.utcnow()
     db.add(project)
