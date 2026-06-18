@@ -619,6 +619,7 @@
 
 .priority-list__item--completed {
   opacity: 0.75;
+  border-left: 3px solid var(--color-text-muted);
 }
 
 .priority-list__item--completed .priority-list__label span {
@@ -629,10 +630,62 @@
 .priority-list__item--scheduled {
   opacity: 0.85;
   border-style: dashed;
+  border-left: 3px solid #c4a035;
 }
 
 .priority-list__item--scheduled .priority-list__label span {
   color: var(--color-text-muted);
+}
+
+.priority-list__item--active {
+  border-left: 3px solid #3b82f6;
+}
+
+.priority-list__status-badge {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.priority-list__status-badge--active {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.priority-list__status-badge--completed {
+  color: var(--color-text-muted);
+  background: var(--color-hover);
+}
+
+.priority-list__status-badge--scheduled {
+  color: #92680a;
+  background: #fef3c7;
+}
+
+@media (prefers-color-scheme: dark) {
+  .priority-list__item--scheduled {
+    border-left-color: #d4a72c;
+  }
+
+  .priority-list__item--active {
+    border-left-color: #60a5fa;
+  }
+
+  .priority-list__status-badge--active {
+    color: #93c5fd;
+    background: #1e3a5f;
+  }
+
+  .priority-list__status-badge--scheduled {
+    color: #fcd34d;
+    background: #422006;
+  }
 }
 
 .priority-list__handle {

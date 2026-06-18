@@ -20,10 +20,12 @@ import {
 } from '../../utils/priorityReorder';
 import { getCompletedProjectIds } from '../../utils/projectVisibility';
 import {
+  getTaskPriorityListStatus,
   isRecurringTaskScheduledForFuture,
   isTaskCompletedInPriorityList,
   isTaskVisibleByStatusFilter,
   type PriorityListStatusFilter,
+  type TaskPriorityListStatus,
 } from '../../utils/taskVisibility';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { PriorityListFilterBar } from './PriorityListFilterBar';
@@ -34,11 +36,18 @@ function getProjectTitle(projects: { id: number; title: string }[], projectId: n
   return project?.title ?? `Project #${projectId}`;
 }
 
+const TASK_STATUS_LABELS: Record<TaskPriorityListStatus, string> = {
+  active: 'Active',
+  completed: 'Completed',
+  scheduled: 'Scheduled',
+};
+
 interface PriorityTaskItemProps {
   task: Task;
   projects: { id: number; title: string }[];
   showProjectName: boolean;
-  variant: PriorityListStatusFilter;
+  taskStatus: TaskPriorityListStatus;
+  showStatusBadge?: boolean;
   completingTaskId: number | null;
   deletingTaskId: number | null;
   editingTaskId: number | null;
@@ -56,7 +65,8 @@ function PriorityTaskItem({
   task,
   projects,
   showProjectName,
-  variant,
+  taskStatus,
+  showStatusBadge = false,
   completingTaskId,
   deletingTaskId,
   editingTaskId,
@@ -73,8 +83,9 @@ function PriorityTaskItem({
   const isEditing = editingTaskId === task.id;
   const className = [
     'priority-list__item',
-    variant === 'completed' ? 'priority-list__item--completed' : '',
-    variant === 'scheduled' ? 'priority-list__item--scheduled' : '',
+    taskStatus === 'completed' ? 'priority-list__item--completed' : '',
+    taskStatus === 'scheduled' ? 'priority-list__item--scheduled' : '',
+    taskStatus === 'active' ? 'priority-list__item--active' : '',
     isDragging ? 'priority-list__item--dragging' : '',
   ]
     .filter(Boolean)
@@ -82,7 +93,7 @@ function PriorityTaskItem({
 
   return (
     <li ref={itemRef} className={className} {...itemProps}>
-      {variant === 'active' && dragHandleProps && (
+      {taskStatus === 'active' && dragHandleProps && (
         <span className="priority-list__handle" {...dragHandleProps} aria-label="Drag to reorder">
           ⋮⋮
         </span>
@@ -99,6 +110,13 @@ function PriorityTaskItem({
 
       <div className="priority-list__content">
         <div className="priority-list__label">
+          {showStatusBadge && (
+            <span
+              className={`priority-list__status-badge priority-list__status-badge--${taskStatus}`}
+            >
+              {TASK_STATUS_LABELS[taskStatus]}
+            </span>
+          )}
           {showProjectName && <>{getProjectTitle(projects, task.project_id)} — </>}
           <span>{task.title}</span>
         </div>
@@ -165,6 +183,8 @@ export function PriorityListView() {
       : 'active';
 
   const isActiveView = statusFilter === 'active';
+  const isAllView = statusFilter === 'all';
+  const supportsDrag = isActiveView || isAllView;
 
   const completedProjectIds = useMemo(() => getCompletedProjectIds(projects), [projects]);
 
@@ -211,17 +231,22 @@ export function PriorityListView() {
       return;
     }
 
-    const reorderedVisible = reorderArray(
+    const reorderedDisplayed = reorderArray(
       displayedTasks,
       result.source.index,
       result.destination.index,
     );
 
-    const visibleIds = new Set(displayedTasks.map((task) => task.id));
+    const activeTasksInView = displayedTasks.filter(
+      (task) => getTaskPriorityListStatus(task) === 'active',
+    );
+    const activeIds = new Set(activeTasksInView.map((task) => task.id));
+    const reorderedActive = reorderedDisplayed.filter((task) => activeIds.has(task.id));
+
     const mergedFullList = mergeVisibleReorderIntoWorkspace(
       fullWorkspaceTasks,
-      visibleIds,
-      reorderedVisible,
+      activeIds,
+      reorderedActive,
     );
 
     await reorderTasks(mergedFullList);
@@ -271,7 +296,11 @@ export function PriorityListView() {
   const isProjectFiltered = projectFilterId !== null;
 
   const emptyMessage =
-    statusFilter === 'completed'
+    statusFilter === 'all'
+      ? isProjectFiltered
+        ? 'No tasks in this project yet.'
+        : 'No tasks in this workspace yet.'
+      : statusFilter === 'completed'
       ? isProjectFiltered
         ? 'No completed tasks in this project yet.'
         : 'No completed tasks in this workspace yet.'
@@ -293,6 +322,13 @@ export function PriorityListView() {
           {isProjectFiltered
             ? 'Drag tasks to reorder this project within the workspace priority line.'
             : 'Drag tasks to reorder the full workspace list. Changes save automatically.'}
+        </p>
+      )}
+
+      {isAllView && (
+        <p className="priority-list__hint">
+          All tasks are shown in priority order. Status badges mark active, completed, and
+          scheduled tasks. Only active tasks can be dragged to reorder.
         </p>
       )}
 
@@ -329,7 +365,7 @@ export function PriorityListView() {
 
       {displayedTasks.length === 0 ? (
         <p className="priority-list__hint">{emptyMessage}</p>
-      ) : isActiveView ? (
+      ) : supportsDrag ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="priority-tasks">
             {(droppableProvided) => (
@@ -338,31 +374,41 @@ export function PriorityListView() {
                 ref={droppableProvided.innerRef}
                 {...droppableProvided.droppableProps}
               >
-                {displayedTasks.map((task, index) => (
-                  <Draggable key={task.id} draggableId={String(task.id)} index={index}>
-                    {(draggableProvided, snapshot) => (
-                      <PriorityTaskItem
-                        task={task}
-                        projects={projects}
-                        showProjectName={!isProjectFiltered}
-                        variant="active"
-                        completingTaskId={completingTaskId}
-                        deletingTaskId={deletingTaskId}
-                        editingTaskId={editingTaskId}
-                        itemRef={draggableProvided.innerRef}
-                        itemProps={draggableProvided.draggableProps}
-                        dragHandleProps={draggableProvided.dragHandleProps ?? undefined}
-                        isDragging={snapshot.isDragging}
-                        onCompleteToggle={(taskId, isCompleted) =>
-                          void handleCompleteToggle(taskId, isCompleted)
-                        }
-                        onDelete={(taskId, title) => setPendingDeleteTask({ id: taskId, title })}
-                        onToggleEdit={handleToggleEdit}
-                        onCloseEdit={() => setEditingTaskId(null)}
-                      />
-                    )}
-                  </Draggable>
-                ))}
+                {displayedTasks.map((task, index) => {
+                  const taskStatus = isAllView ? getTaskPriorityListStatus(task) : 'active';
+
+                  return (
+                    <Draggable
+                      key={task.id}
+                      draggableId={String(task.id)}
+                      index={index}
+                      isDragDisabled={taskStatus !== 'active'}
+                    >
+                      {(draggableProvided, snapshot) => (
+                        <PriorityTaskItem
+                          task={task}
+                          projects={projects}
+                          showProjectName={!isProjectFiltered}
+                          taskStatus={taskStatus}
+                          showStatusBadge={isAllView}
+                          completingTaskId={completingTaskId}
+                          deletingTaskId={deletingTaskId}
+                          editingTaskId={editingTaskId}
+                          itemRef={draggableProvided.innerRef}
+                          itemProps={draggableProvided.draggableProps}
+                          dragHandleProps={draggableProvided.dragHandleProps ?? undefined}
+                          isDragging={snapshot.isDragging}
+                          onCompleteToggle={(taskId, isCompleted) =>
+                            void handleCompleteToggle(taskId, isCompleted)
+                          }
+                          onDelete={(taskId, title) => setPendingDeleteTask({ id: taskId, title })}
+                          onToggleEdit={handleToggleEdit}
+                          onCloseEdit={() => setEditingTaskId(null)}
+                        />
+                      )}
+                    </Draggable>
+                  );
+                })}
                 {droppableProvided.placeholder}
               </ul>
             )}
@@ -376,7 +422,7 @@ export function PriorityListView() {
               task={task}
               projects={projects}
               showProjectName={!isProjectFiltered}
-              variant={statusFilter}
+              taskStatus={statusFilter}
               completingTaskId={completingTaskId}
               deletingTaskId={deletingTaskId}
               editingTaskId={editingTaskId}

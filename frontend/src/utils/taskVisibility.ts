@@ -1,6 +1,8 @@
 import type { Task } from '../types';
 
-export type PriorityListStatusFilter = 'active' | 'completed' | 'scheduled';
+export type TaskPriorityListStatus = 'active' | 'completed' | 'scheduled';
+
+export type PriorityListStatusFilter = TaskPriorityListStatus | 'all';
 
 /** ISO date string (YYYY-MM-DD) for the user's local calendar day. */
 export function todayIsoDate(): string {
@@ -41,12 +43,32 @@ export function isTaskCompletedInPriorityList(task: Task): boolean {
   return task.is_completed;
 }
 
-/** Apply the priority list status filter (active, completed, or scheduled recurring). */
+/** Which priority-list bucket a task belongs to (mutually exclusive). */
+export function getTaskPriorityListStatus(
+  task: Task,
+  today = todayIsoDate(),
+): TaskPriorityListStatus {
+  if (isTaskCompletedInPriorityList(task)) {
+    return 'completed';
+  }
+
+  if (isRecurringTaskScheduledForFuture(task, today)) {
+    return 'scheduled';
+  }
+
+  return 'active';
+}
+
+/** Apply the priority list status filter (active, completed, scheduled, or all). */
 export function isTaskVisibleByStatusFilter(
   task: Task,
   statusFilter: PriorityListStatusFilter,
   today = todayIsoDate(),
 ): boolean {
+  if (statusFilter === 'all') {
+    return true;
+  }
+
   if (statusFilter === 'completed') {
     return isTaskCompletedInPriorityList(task);
   }

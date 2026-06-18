@@ -58,6 +58,7 @@ export function PriorityListFilterBar() {
             value={currentStatusFilter}
             onChange={handleStatusChange}
           >
+            <option value="all">All tasks</option>
             <option value="active">Active tasks</option>
             <option value="completed">Completed tasks</option>
             <option value="scheduled">Scheduled recurring</option>
@@ -83,6 +84,13 @@ export function PriorityListFilterBar() {
           </select>
         </div>
       </div>
+
+      {currentStatusFilter === 'all' && (
+        <p className="priority-filter__note">
+          Showing active, completed, and scheduled tasks together. Status badges mark each task;
+          only active tasks can be reordered.
+        </p>
+      )}
 
       {currentStatusFilter === 'completed' && (
         <p className="priority-filter__note">
