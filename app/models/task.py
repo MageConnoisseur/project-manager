@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.enums import RecurrenceUnit
+from app.utils.time import utc_now
 
 if TYPE_CHECKING:
     from app.models.project import Project
@@ -25,8 +26,8 @@ class Task(SQLModel, table=True):
     recurrence_interval: Optional[int] = Field(default=None, ge=1)
     recurrence_unit: Optional[RecurrenceUnit] = Field(default=None)
     recurrence_end_date: Optional[date] = Field(default=None, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
     project: Optional["Project"] = Relationship(back_populates="tasks")
     workspace: Optional["Workspace"] = Relationship(back_populates="tasks")

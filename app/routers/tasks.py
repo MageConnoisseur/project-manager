@@ -5,7 +5,7 @@ The reorder route is defined BEFORE /{task_id} so FastAPI does not treat
 "reorder" as a task id.
 """
 
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,6 +22,7 @@ from app.schemas.task import (
     TaskUpdateRequest,
 )
 from app.utils.recurrence import apply_recurring_completion, default_due_date_for_recurring_task
+from app.utils.time import utc_now
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -99,7 +100,7 @@ def reorder_tasks(
     try:
         for task, new_priority_index in tasks_to_update:
             task.priority_index = new_priority_index
-            task.updated_at = datetime.utcnow()
+            task.updated_at = utc_now()
             db.add(task)
             updated_tasks.append(task)
 
@@ -264,7 +265,7 @@ def update_task(
         if body.is_completed and not was_completed and task.is_recurring:
             apply_recurring_completion(task, next_due_date=body.next_due_date)
 
-    task.updated_at = datetime.utcnow()
+    task.updated_at = utc_now()
     db.add(task)
     db.commit()
     db.refresh(task)
