@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.utils.time import utc_now
+
 if TYPE_CHECKING:
     from app.models.task import Task
     from app.models.workspace import Workspace
@@ -17,8 +19,8 @@ class Project(SQLModel, table=True):
     description: str = Field(default="")
     due_date: Optional[date] = Field(default=None, index=True)
     is_completed: bool = Field(default=False, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
     workspace: Optional["Workspace"] = Relationship(back_populates="projects")
     tasks: list["Task"] = Relationship(back_populates="project")

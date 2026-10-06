@@ -4,8 +4,6 @@ CRUD routes for Lists (stored as Workspace rows in the database).
 Every route requires authentication and only touches rows where user_id matches.
 """
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select
 
@@ -13,6 +11,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.core.ownership import get_owned_workspace
 from app.models import Project, Task, User, Workspace
 from app.schemas.list import ListCreateRequest, ListResponse, ListUpdateRequest
+from app.utils.time import utc_now
 
 router = APIRouter(prefix="/lists", tags=["lists"])
 
@@ -69,7 +68,7 @@ def update_list(
     if body.name is not None:
         workspace.name = body.name
 
-    workspace.updated_at = datetime.utcnow()
+    workspace.updated_at = utc_now()
     db.add(workspace)
     db.commit()
     db.refresh(workspace)

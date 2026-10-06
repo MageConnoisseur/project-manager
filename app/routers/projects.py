@@ -5,7 +5,6 @@ Projects belong to a list (workspace). We always verify the list is owned by
 the logged-in user before creating, reading, updating, or deleting a project.
 """
 
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -19,6 +18,7 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdateRequest,
 )
+from app.utils.time import utc_now
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -106,7 +106,7 @@ def update_project(
         ).all()
         for child_task in child_tasks:
             child_task.workspace_id = body.workspace_id
-            child_task.updated_at = datetime.utcnow()
+            child_task.updated_at = utc_now()
             db.add(child_task)
 
     if body.title is not None:
@@ -119,7 +119,7 @@ def update_project(
     if body.is_completed is not None:
         project.is_completed = body.is_completed
 
-    project.updated_at = datetime.utcnow()
+    project.updated_at = utc_now()
     db.add(project)
     db.commit()
     db.refresh(project)

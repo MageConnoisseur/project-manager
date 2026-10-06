@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.utils.time import utc_now
+
 if TYPE_CHECKING:
     from app.models.project import Project
     from app.models.task import Task
@@ -15,8 +17,8 @@ class Workspace(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="users.id", index=True)
     name: str = Field(max_length=255, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
 
     user: Optional["User"] = Relationship(back_populates="workspaces")
     projects: list["Project"] = Relationship(back_populates="workspace")
