@@ -101,8 +101,8 @@ export function PriorityListFilterBar() {
 
       {currentStatusFilter === 'scheduled' && (
         <p className="priority-filter__note">
-          Showing recurring tasks waiting for their next due date. They will return to the active
-          list automatically when due.
+          Showing recurring tasks waiting for their next due date. They return to the active list
+          when due. Check one off to choose a different next date.
         </p>
       )}
 

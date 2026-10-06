@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTaskStore } from '../../store/taskStore';
 import type { Task } from '../../types';
 import { formatRecurrenceSummary } from '../../utils/recurrence';
+import { NextDueDateDialog, type NextDueDateTask } from './NextDueDateDialog';
 import {
   getVisiblePriorityTasks,
   mergeVisibleReorderIntoWorkspace,
@@ -49,6 +50,7 @@ interface PriorityTaskItemProps {
   taskStatus: TaskPriorityListStatus;
   showStatusBadge?: boolean;
   completingTaskId: number | null;
+  pendingScheduleTaskId: number | null;
   deletingTaskId: number | null;
   editingTaskId: number | null;
   itemRef?: React.Ref<HTMLLIElement>;
@@ -68,6 +70,7 @@ function PriorityTaskItem({
   taskStatus,
   showStatusBadge = false,
   completingTaskId,
+  pendingScheduleTaskId,
   deletingTaskId,
   editingTaskId,
   itemRef,
@@ -102,9 +105,13 @@ function PriorityTaskItem({
       <input
         className="priority-list__checkbox"
         type="checkbox"
-        checked={task.is_completed}
+        checked={task.is_completed || pendingScheduleTaskId === task.id}
         disabled={completingTaskId === task.id}
-        aria-label={`Mark "${task.title}" complete`}
+        aria-label={
+          task.is_recurring
+            ? `Choose the next date for "${task.title}"`
+            : `Mark "${task.title}" complete`
+        }
         onChange={(event) => onCompleteToggle(task.id, event.target.checked)}
       />
 
@@ -167,6 +174,8 @@ export function PriorityListView() {
 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
+  const [pendingNextDue, setPendingNextDue] = useState<NextDueDateTask | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [pendingDeleteTask, setPendingDeleteTask] = useState<{ id: number; title: string } | null>(
     null,
   );
@@ -252,13 +261,57 @@ export function PriorityListView() {
     await reorderTasks(mergedFullList);
   }
 
-  async function handleCompleteToggle(taskId: number, isCompleted: boolean) {
+  async function saveCompletion(taskId: number, isCompleted: boolean, nextDueDate?: string) {
     setCompletingTaskId(taskId);
+    setScheduleError(null);
     try {
-      await updateTask(taskId, { is_completed: isCompleted });
+      const updated = await updateTask(taskId, {
+        is_completed: isCompleted,
+        ...(nextDueDate ? { next_due_date: nextDueDate } : {}),
+      });
+      if (updated) {
+        setPendingNextDue(null);
+        return;
+      }
+      setScheduleError(useTaskStore.getState().error ?? 'Failed to schedule the next date.');
     } finally {
       setCompletingTaskId(null);
     }
+  }
+
+  function handleCompleteToggle(taskId: number, isCompleted: boolean) {
+    if (pendingNextDue && pendingNextDue.id !== taskId) {
+      return;
+    }
+
+    if (pendingNextDue?.id === taskId) {
+      if (!isCompleted) {
+        setPendingNextDue(null);
+        setScheduleError(null);
+      }
+      return;
+    }
+
+    const task = tasks.find((item) => item.id === taskId);
+    if (
+      isCompleted &&
+      task?.is_recurring &&
+      task.recurrence_interval &&
+      task.recurrence_unit
+    ) {
+      setScheduleError(null);
+      setPendingNextDue({
+        id: task.id,
+        title: task.title,
+        due_date: task.due_date,
+        recurrence_interval: task.recurrence_interval,
+        recurrence_unit: task.recurrence_unit,
+        recurrence_end_date: task.recurrence_end_date,
+      });
+      return;
+    }
+
+    void saveCompletion(taskId, isCompleted);
   }
 
   function handleToggleEdit(taskId: number) {
@@ -341,8 +394,8 @@ export function PriorityListView() {
 
       {statusFilter === 'scheduled' && (
         <p className="priority-list__hint">
-          These recurring tasks are waiting for their next due date. Edit a task to change its
-          schedule.
+          These recurring tasks are waiting for their next due date. Check one off to choose when
+          it should happen next, or edit the task to change its schedule.
         </p>
       )}
 
@@ -392,6 +445,7 @@ export function PriorityListView() {
                           taskStatus={taskStatus}
                           showStatusBadge={isAllView}
                           completingTaskId={completingTaskId}
+                          pendingScheduleTaskId={pendingNextDue?.id ?? null}
                           deletingTaskId={deletingTaskId}
                           editingTaskId={editingTaskId}
                           itemRef={draggableProvided.innerRef}
@@ -424,6 +478,7 @@ export function PriorityListView() {
               showProjectName={!isProjectFiltered}
               taskStatus={statusFilter}
               completingTaskId={completingTaskId}
+              pendingScheduleTaskId={pendingNextDue?.id ?? null}
               deletingTaskId={deletingTaskId}
               editingTaskId={editingTaskId}
               onCompleteToggle={(taskId, isCompleted) => void handleCompleteToggle(taskId, isCompleted)}
@@ -433,6 +488,22 @@ export function PriorityListView() {
             />
           ))}
         </ul>
+      )}
+
+      {pendingNextDue && (
+        <NextDueDateDialog
+          key={pendingNextDue.id}
+          task={pendingNextDue}
+          isLoading={completingTaskId === pendingNextDue.id}
+          error={scheduleError}
+          onConfirm={(nextDueDate) => void saveCompletion(pendingNextDue.id, true, nextDueDate)}
+          onCancel={() => {
+            if (completingTaskId === null) {
+              setPendingNextDue(null);
+              setScheduleError(null);
+            }
+          }}
+        />
       )}
 
       <ConfirmDialog

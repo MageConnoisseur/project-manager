@@ -813,6 +813,59 @@
   background: var(--color-hover);
 }
 
+.next-due-dialog {
+  max-width: 26rem;
+}
+
+.next-due-dialog .task-form__field {
+  margin-bottom: 0.75rem;
+}
+
+.next-due-dialog__suggestion {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.next-due-dialog__suggestion:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.next-due-dialog__suggestion:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.next-due-dialog__consequence {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.next-due-dialog__actions .btn--primary {
+  border-color: transparent;
+  background: #4f46e5;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.next-due-dialog__actions .btn--primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.next-due-dialog__actions .btn--primary:disabled {
+  background: #e0e7ff;
+  color: #6b7280;
+}
+
 /* --- Sidebar backdrop (mobile drawer) --- */
 
 .app-sidebar-backdrop {

@@ -37,6 +37,14 @@ class TaskUpdateRequest(BaseModel):
     recurrence_interval: Optional[int] = Field(default=None, ge=1)
     recurrence_unit: Optional[RecurrenceUnit] = None
     recurrence_end_date: Optional[date] = None
+    next_due_date: Optional[date] = Field(
+        default=None,
+        description=(
+            "When marking a recurring task complete, the date chosen for the next "
+            "occurrence. Omit to advance one interval from the current due date. "
+            "A date after recurrence_end_date ends the series."
+        ),
+    )
     project_id: Optional[int] = Field(
         default=None,
         description="Move task to another project (must belong to you)",
