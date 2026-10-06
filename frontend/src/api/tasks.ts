@@ -25,6 +25,7 @@ export interface UpdateTaskPayload {
   recurrence_interval?: number | null;
   recurrence_unit?: RecurrenceUnit | null;
   recurrence_end_date?: string | null;
+  next_due_date?: string | null;
 }
 
 export interface TaskReorderItemPayload {

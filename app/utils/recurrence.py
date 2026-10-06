@@ -33,19 +33,25 @@ def default_due_date_for_recurring_task(due_date: Optional[date]) -> date:
     return due_date or date.today()
 
 
-def apply_recurring_completion(task: Task) -> None:
+def apply_recurring_completion(task: Task, next_due_date: Optional[date] = None) -> None:
     """
     When a recurring task is marked complete, schedule the next cycle.
 
     Resets is_completed so the task can reappear when its next due date arrives.
+    The next due date is the date the user picked when one is provided. Otherwise
+    it is one interval after the current due date, which keeps a fixed schedule
+    even if the task was finished early or late.
     If the next due date would fall after recurrence_end_date, recurrence stops
     and the task is left completed with its current due date unchanged.
     """
     if not task.is_recurring or task.recurrence_interval is None or task.recurrence_unit is None:
         return
 
-    base = default_due_date_for_recurring_task(task.due_date)
-    next_due = add_recurrence_interval(base, task.recurrence_interval, task.recurrence_unit)
+    if next_due_date is None:
+        base = default_due_date_for_recurring_task(task.due_date)
+        next_due = add_recurrence_interval(base, task.recurrence_interval, task.recurrence_unit)
+    else:
+        next_due = next_due_date
 
     if task.recurrence_end_date is not None and next_due > task.recurrence_end_date:
         task.is_recurring = False

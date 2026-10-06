@@ -262,7 +262,7 @@ def update_task(
         was_completed = task.is_completed
         task.is_completed = body.is_completed
         if body.is_completed and not was_completed and task.is_recurring:
-            apply_recurring_completion(task)
+            apply_recurring_completion(task, next_due_date=body.next_due_date)
 
     task.updated_at = datetime.utcnow()
     db.add(task)
