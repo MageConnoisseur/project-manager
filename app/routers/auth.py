@@ -2,12 +2,18 @@
 Authentication routes: signup, login (JWT), and current user profile.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlmodel import Session, select
 
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    MOBILE_ACCESS_TOKEN_EXPIRE_MINUTES,
+    MOBILE_CLIENT_NAME,
+)
 from app.core.dependencies import get_current_user, get_db
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import User
@@ -62,6 +68,7 @@ def signup(body: UserSignupRequest, db: Session = Depends(get_db)) -> User:
 @router.post("/token", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
+    client: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
     """
@@ -69,6 +76,9 @@ def login(
 
     OAuth2 expects form fields named `username` and `password`.
     We use `username` for the user's email address (FastAPI convention).
+
+    The website omits `client` and gets a short-lived token.
+    The phone sends client=android and gets a 21-day token.
     """
     try:
         user = db.exec(select(User).where(User.email == form_data.username)).first()
@@ -95,9 +105,13 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    expires_minutes = ACCESS_TOKEN_EXPIRE_MINUTES
+    if client == MOBILE_CLIENT_NAME:
+        expires_minutes = MOBILE_ACCESS_TOKEN_EXPIRE_MINUTES
+
     access_token = create_access_token(
         subject=str(user.id),
-        expires_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
+        expires_minutes=expires_minutes,
     )
     return TokenResponse(access_token=access_token)
 

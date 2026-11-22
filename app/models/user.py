@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
+from sqlalchemy import BigInteger
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.utils.time import utc_now
@@ -16,6 +17,9 @@ class User(SQLModel, table=True):
     email: str = Field(max_length=255, unique=True, index=True)
     display_name: str = Field(max_length=255)
     password_hash: str = Field(max_length=255)
+    # Bumps by 1 on every list, project, or task change for this account.
+    # The phone compares this number to its local copy to see if it is behind.
+    sync_revision: int = Field(default=0, sa_type=BigInteger)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

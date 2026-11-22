@@ -55,6 +55,11 @@ SECRET_KEY: str = _raw_secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
+# Phone login sends client=android and keeps the session for 21 days.
+# The website omits that field and stays on the shorter token above.
+MOBILE_CLIENT_NAME = "android"
+MOBILE_ACCESS_TOKEN_EXPIRE_MINUTES = 21 * 24 * 60
+
 # --- CORS (frontend on Vercel talking to backend on Render) ---
 # Comma-separated list of allowed origins, e.g. http://localhost:5173,https://myapp.vercel.app
 _cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")

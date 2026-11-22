@@ -18,6 +18,14 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdateRequest,
 )
+from app.services.sync_log import (
+    ENTITY_PROJECT,
+    ENTITY_TASK,
+    OP_DELETE,
+    OP_UPSERT,
+    commit_and_push,
+    record_change,
+)
 from app.utils.time import utc_now
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -68,7 +76,9 @@ def create_project(
         due_date=body.due_date,
     )
     db.add(project)
-    db.commit()
+    db.flush()
+    record_change(db, current_user, ENTITY_PROJECT, project.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(project)
     return project
 
@@ -108,6 +118,7 @@ def update_project(
             child_task.workspace_id = body.workspace_id
             child_task.updated_at = utc_now()
             db.add(child_task)
+            record_change(db, current_user, ENTITY_TASK, child_task.id, OP_UPSERT)
 
     if body.title is not None:
         project.title = body.title
@@ -121,7 +132,8 @@ def update_project(
 
     project.updated_at = utc_now()
     db.add(project)
-    db.commit()
+    record_change(db, current_user, ENTITY_PROJECT, project.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(project)
     return project
 
@@ -136,7 +148,9 @@ def delete_project(
     project = get_owned_project(db, project_id, current_user)
 
     for task in db.exec(select(Task).where(Task.project_id == project.id)).all():
+        record_change(db, current_user, ENTITY_TASK, task.id, OP_DELETE)
         db.delete(task)
 
+    record_change(db, current_user, ENTITY_PROJECT, project.id, OP_DELETE)
     db.delete(project)
-    db.commit()
+    commit_and_push(db, current_user)

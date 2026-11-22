@@ -13,8 +13,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError
 
 from app.config import CORS_ALLOW_VERCEL, CORS_ORIGINS
+from app.core.idempotency_middleware import IdempotencyMiddleware
 from app.database import check_database_connection
-from app.routers import auth, lists, projects, tasks
+from app.routers import auth, devices, lists, projects, sync, tasks
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -39,6 +40,8 @@ if CORS_ALLOW_VERCEL:
     # Matches https://your-app.vercel.app and preview URLs like https://your-app-abc123.vercel.app
     cors_kwargs["allow_origin_regex"] = r"https://.*\.vercel\.app"
 
+# Added first so CORS stays outermost and can label every response, including replays.
+app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(CORSMiddleware, **cors_kwargs)
 
 
@@ -68,6 +71,8 @@ app.include_router(auth.router)
 app.include_router(lists.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
+app.include_router(sync.router)
+app.include_router(devices.router)
 
 
 @app.get("/health")

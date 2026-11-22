@@ -11,6 +11,15 @@ from app.core.dependencies import get_current_user, get_db
 from app.core.ownership import get_owned_workspace
 from app.models import Project, Task, User, Workspace
 from app.schemas.list import ListCreateRequest, ListResponse, ListUpdateRequest
+from app.services.sync_log import (
+    ENTITY_PROJECT,
+    ENTITY_TASK,
+    ENTITY_WORKSPACE,
+    OP_DELETE,
+    OP_UPSERT,
+    commit_and_push,
+    record_change,
+)
 from app.utils.time import utc_now
 
 router = APIRouter(prefix="/lists", tags=["lists"])
@@ -40,7 +49,9 @@ def create_list(
     """Create a new list owned by the current user."""
     workspace = Workspace(user_id=current_user.id, name=body.name)
     db.add(workspace)
-    db.commit()
+    db.flush()
+    record_change(db, current_user, ENTITY_WORKSPACE, workspace.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(workspace)
     return workspace
 
@@ -70,7 +81,8 @@ def update_list(
 
     workspace.updated_at = utc_now()
     db.add(workspace)
-    db.commit()
+    record_change(db, current_user, ENTITY_WORKSPACE, workspace.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(workspace)
     return workspace
 
@@ -87,10 +99,13 @@ def delete_list(
     workspace = get_owned_workspace(db, list_id, current_user)
 
     for task in db.exec(select(Task).where(Task.workspace_id == workspace.id)).all():
+        record_change(db, current_user, ENTITY_TASK, task.id, OP_DELETE)
         db.delete(task)
 
     for project in db.exec(select(Project).where(Project.workspace_id == workspace.id)).all():
+        record_change(db, current_user, ENTITY_PROJECT, project.id, OP_DELETE)
         db.delete(project)
 
+    record_change(db, current_user, ENTITY_WORKSPACE, workspace.id, OP_DELETE)
     db.delete(workspace)
-    db.commit()
+    commit_and_push(db, current_user)
