@@ -12,7 +12,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 
 from app.core.security import decode_access_token
-from app.database import engine
+from app import database
 from app.models import User
 
 # Tells FastAPI that login lives at POST /auth/token and tokens go in Authorization: Bearer ...
@@ -25,7 +25,7 @@ def get_db() -> Generator[Session, None, None]:
 
     Using a generator ensures connections are not left open after the response is sent.
     """
-    with Session(engine) as session:
+    with Session(database.engine) as session:
         yield session
 
 

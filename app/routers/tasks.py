@@ -21,6 +21,7 @@ from app.schemas.task import (
     TaskResponse,
     TaskUpdateRequest,
 )
+from app.services.sync_log import ENTITY_TASK, OP_DELETE, OP_UPSERT, commit_and_push, record_change
 from app.utils.recurrence import apply_recurring_completion, default_due_date_for_recurring_task
 from app.utils.time import utc_now
 
@@ -102,10 +103,11 @@ def reorder_tasks(
             task.priority_index = new_priority_index
             task.updated_at = utc_now()
             db.add(task)
+            record_change(db, current_user, ENTITY_TASK, task.id, OP_UPSERT)
             updated_tasks.append(task)
 
         # Single commit: either every task updates or none do.
-        db.commit()
+        commit_and_push(db, current_user)
 
         for task in updated_tasks:
             db.refresh(task)
@@ -189,7 +191,9 @@ def create_task(
         recurrence_end_date=body.recurrence_end_date if body.is_recurring else None,
     )
     db.add(task)
-    db.commit()
+    db.flush()
+    record_change(db, current_user, ENTITY_TASK, task.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(task)
     return task
 
@@ -267,7 +271,8 @@ def update_task(
 
     task.updated_at = utc_now()
     db.add(task)
-    db.commit()
+    record_change(db, current_user, ENTITY_TASK, task.id, OP_UPSERT)
+    commit_and_push(db, current_user)
     db.refresh(task)
     return task
 
@@ -280,5 +285,6 @@ def delete_task(
 ) -> None:
     """Delete a task owned by the user."""
     task = get_owned_task(db, task_id, current_user)
+    record_change(db, current_user, ENTITY_TASK, task.id, OP_DELETE)
     db.delete(task)
-    db.commit()
+    commit_and_push(db, current_user)

@@ -1,0 +1,79 @@
+name: Android release
+
+on:
+  push:
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Add google-services.json when the secret is set
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s\n' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          fi
+
+      - name: Use the release keystore when secrets are set
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+            printf 'STORE_FILE=release.keystore\nSTORE_PASSWORD=%s\nKEY_ALIAS=%s\nKEY_PASSWORD=%s\n' \
+              "$ANDROID_KEYSTORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD" \
+              > android/keystore.properties
+            echo "SIGNING_NOTE=This build is signed with the release keystore, so it can update an install from an earlier release." >> "$GITHUB_ENV"
+          else
+            echo "SIGNING_NOTE=This build is signed with the debug keystore in the repository. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD before sharing widely, so later releases can install over this one." >> "$GITHUB_ENV"
+          fi
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#android-v}"
+          else
+            VERSION="0.1.0"
+          fi
+          ./gradlew assembleRelease --stacktrace -PversionCode="${GITHUB_RUN_NUMBER}" -PversionName="$VERSION"
+
+      - name: Write release notes
+        run: |
+          cat > release-notes.md << EOF
+          Install on an Android phone: download \`app-release.apk\` below and allow the browser to install apps.
+
+          The app uses the same email and password as the website. The first sign-in can take about a minute while the server wakes up. After that, the list opens from the copy stored on the phone.
+
+          Package name: \`com.projectmanager.android\`.
+
+          ${SIGNING_NOTE}
+
+          Silent push of website edits needs a Firebase Android app with this package name. Put \`google-services.json\` in the \`GOOGLE_SERVICES_JSON\` secret and the service-account JSON in \`FIREBASE_SERVICE_ACCOUNT_JSON\` on Render. Until then, the phone still syncs when you open it and about every 15 minutes.
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/app-release.apk
+          body_path: release-notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
